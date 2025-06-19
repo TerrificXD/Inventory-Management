@@ -20,27 +20,29 @@ exports.register = async (req, res) => {
   try {
     const { name, email, password, company } = req.body;
 
-    // Check if email already exists
+    if (!name || !email || !password || !company) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
-    // Check how many users are in this company
     const usersInCompany = await User.find({ company });
 
-    // Create new user with role
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const newUser = new User({
       name,
       email,
-      password,
+      password: hashedPassword,
       company,
       role: usersInCompany.length === 0 ? "admin" : "staff",
     });
 
     await newUser.save();
 
-    // Respond with token and user
     res.status(201).json({
       token: generateToken(newUser),
       user: {
